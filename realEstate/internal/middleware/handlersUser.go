@@ -2,15 +2,18 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"path/filepath"
 	"realEstate/internal/db"
 	"realEstate/internal/models"
 	pass "realEstate/pkg/password"
+	"strconv"
+	"time"
 )
 
-func Logout(c *gin.Context) {
+func Logout(c *gin.Context){
 	//TODO add cookie and clear whem
 	c.Redirect(http.StatusSeeOther, "/")
 }
@@ -26,14 +29,15 @@ func Logout(c *gin.Context) {
 // @Success 303 {object} http.Redirect("/")
 // @Failure 400 {object} web.APIError "User not found"
 // @Router /auth/login [get]
-func Login(c *gin.Context) {
+const SecretKey="adsad3423sdf099bcv_@sfds&8"
+func Login(c *gin.Context)  {
 	//TODO add cookie
 	Login := c.Query("Login")
 	Enc_password := c.Query("Enc_password")
 	var user models.User
-	row := db.InitDB().QueryRow(`SELECT "Login", "Enc_password"
+	row := db.InitDB().QueryRow(`SELECT "Id_user","Login", "Enc_password"
  	 FROM public."Users" where "Login"=$1`, Login)
-	err2 := row.Scan(&user.Login, &user.Enc_password)
+	err2 := row.Scan(&user.Id_user,&user.Login, &user.Enc_password)
 	if err2 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "User not found",
@@ -44,11 +48,49 @@ func Login(c *gin.Context) {
 			"message": "Invalid password",
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login and Password correct",
+
+	claims:=jwt.NewWithClaims(jwt.SigningMethodHS256,jwt.StandardClaims{
+		Issuer:strconv.Itoa(int(user.Id_user)),
+		ExpiresAt: time.Now().Add(time.Hour*24).Unix(),// 1 day
 	})
-	c.Redirect(http.StatusSeeOther, "/")
+
+	token, _ := claims.SignedString([]byte(SecretKey))
+	cookie, _ := c.Cookie("jwt")
+		c.SetCookie("jwt",token,3600,"/","localhost",false,true)
+
+	c.Cookie(cookie)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "sucess",
+	})
 }
+
+func UserCookie(c *gin.Context)  {
+	cookie, err := c.Cookie("jwt")
+	token, err:=jwt.ParseWithClaims(cookie,jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey),nil
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Unathenticated",
+		})
+	}
+	claims := token.Claims.(jwt.StandardClaims)
+	var user models.User
+	row := db.InitDB().QueryRow(`SELECT "Id_user","Login", "Enc_password"
+ 	 FROM public."Users" where "Id_user"=$1`, claims.Issuer)
+	err2 := row.Scan(&user.Id_user,&user.Login, &user.Enc_password)
+	if err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "User not found",
+		})
+	}
+		c.JSON(http.StatusOK, gin.H{
+			"message": user,
+		})
+
+}
+
 
 // GetAllUser godoc
 // @Summary Add a new pet to the store
@@ -64,7 +106,7 @@ func Login(c *gin.Context) {
 // @Router /users [get]
 func GetAllUser(c *gin.Context) {
 	// если добавлять поле date_creation,date_update
-	rows, err := db.InitDB().Query(`SELECT "Name", "Surename", 
+	rows, err := db.InitDB().Query(`SELECT "Id_user","Name", "Surename", 
        "Login", "Enc_password", "Telephone", "Email" ,"Date_creation" FROM public."Users"`)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -75,7 +117,7 @@ func GetAllUser(c *gin.Context) {
 	var users []models.User
 	for rows.Next() {
 		var user models.User
-		err2 := rows.Scan(&user.Name, &user.Surename,
+		err2 := rows.Scan(&user.Id_user,&user.Name, &user.Surename,
 			&user.Login, &user.Enc_password, &user.Telephone, &user.Email, &user.Date_creation)
 		// Exit if we get an error
 		if err2 != nil {
@@ -145,9 +187,9 @@ func CreateUser(c *gin.Context) {
 func GetUser(c *gin.Context) {
 	Email := c.Query("Email")
 	var user models.User
-	row := db.InitDB().QueryRow(`SELECT "Name", "Surename","Login", "Enc_password",
+	row := db.InitDB().QueryRow(`SELECT "Id_user","Name", "Surename","Login", "Enc_password",
  	"Telephone", "Email", "Date_creation" FROM public."Users" where "Email"=$1`, Email)
-	err := row.Scan(&user.Name, &user.Surename, &user.Login, &user.Enc_password, &user.Telephone,
+	err := row.Scan(&user.Id_user,&user.Name, &user.Surename, &user.Login, &user.Enc_password, &user.Telephone,
 		&user.Email, &user.Date_creation)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -15,6 +15,14 @@ var router *gin.Engine
 
 func StartGin() {
 	router = gin.Default()
+	//corsConfig := cors.DefaultConfig()
+	//corsConfig.AllowCredentials = true
+	//corsConfig.AllowOrigins = []string{"https:/localhost:8080"}
+	// To be able to send tokens to the server.
+	//corsConfig.AllowCredentials = true
+	// OPTIONS method for ReactJS
+	//corsConfig.AddAllowMethods("OPTIONS")
+	//router.Use(cors.New(corsConfig))
 	InitializeRoutes()
 	if err := router.Run("localhost:8080"); err != nil {
 		logg.Fatal("Server not run!")
@@ -31,6 +39,7 @@ func InitializeRoutes() {
 	router.GET("/auth/login", middleware.Login)
 	router.GET("/auth/logout", middleware.Logout)
 	router.GET("/getusers", middleware.GetUser)
+	router.GET("/user", middleware.UserCookie)
 	router.PUT("/users", middleware.UpdateUser)
 	router.DELETE("/users", middleware.DeleteUser)
 	router.GET(" ", middleware.NotFound)
