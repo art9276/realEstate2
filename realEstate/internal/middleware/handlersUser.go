@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"realEstate/internal/db"
 	"realEstate/internal/models"
+	pass "realEstate/pkg/password"
 )
 
 func Logout(c *gin.Context) {
 	//TODO add cookie and clear whem
-c.Redirect(http.StatusSeeOther,"/")
+	c.Redirect(http.StatusSeeOther, "/")
 }
 
 // Login godoc
@@ -28,21 +29,25 @@ c.Redirect(http.StatusSeeOther,"/")
 func Login(c *gin.Context) {
 	//TODO add cookie
 	Login := c.Query("Login")
-	Enc_password:=c.Query("Enc_password")
+	Enc_password := c.Query("Enc_password")
 	var user models.User
 	row := db.InitDB().QueryRow(`SELECT "Login", "Enc_password"
- 	 FROM public."Users" where "Login"=$1 
- 	AND "Enc_password"=$2`, Login,Enc_password)
+ 	 FROM public."Users" where "Login"=$1`, Login)
 	err2 := row.Scan(&user.Login, &user.Enc_password)
 	if err2 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "User not found",
 		})
 	}
+	if pass.CheckPasswordHash(Enc_password, user.Enc_password) != true {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid password",
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login and Password correct",
 	})
-	c.Redirect(http.StatusSeeOther,"/")
+	c.Redirect(http.StatusSeeOther, "/")
 }
 
 // GetAllUser godoc
@@ -111,7 +116,8 @@ func CreateUser(c *gin.Context) {
 			VALUES ($1, $2, $3, $4, $5, $6,$7) `
 	res, err := db.InitDB().Query(sqlStatement, u.Name,
 		u.Surename, u.Login,
-		u.Enc_password, u.Telephone, u.Email, u.Date_creation)
+		pass.HashPassword(u.Enc_password), u.Telephone, u.Email, u.Date_creation)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to saved user",
@@ -123,7 +129,6 @@ func CreateUser(c *gin.Context) {
 		})
 	}
 }
-
 
 // GetUsers godoc
 // @Summary Add a new pet to the store

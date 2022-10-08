@@ -1,17 +1,17 @@
 package password
 
 import (
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	logg "realEstate/pkg/log"
 )
 
 // HashPassword returns the bcrypt hash of the password
-func HashPassword(password string) (string, error) {
+func HashPassword(password string) string {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
+		logg.Error("failed to hash password: %w")
 	}
-	return string(bytes), err
+	return string(bytes)
 }
 
 // CheckPassword checks if the provided password is correct or not

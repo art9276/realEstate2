@@ -22,10 +22,8 @@ import (
 func main() {
 	logg.GetLogger()
 	db.InitDB()
-	//viper.New()
-	//conf.LoadConfig()
 	routes.StartGin()
-	//db.InitRedis()
+	//redis.InitRedis()
 	logg.Info("Server is running on port:8080")
 
 }
