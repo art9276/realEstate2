@@ -38,6 +38,7 @@ func GetAdvertisment(c *gin.Context) {
 }
 
 func GetAllAdvertisment(c *gin.Context) {
+
 	rows, err := db.InitDB().Query(`SELECT "IdAdvertisment", 
        "TypeAdvertisment", "Price", "TotalArea",  
        "YearOfContribution", "Address", "Description", 

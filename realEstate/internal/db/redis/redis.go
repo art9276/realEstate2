@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 	logg "realEstate/pkg/log"
 )
@@ -10,32 +9,19 @@ import (
 var ctx = context.Background()
 
 // initialize redis db
-func InitRedis() {
+func InitRedis() *redis.Client {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "127.0.0.1:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+	pong, err := rdb.Ping(ctx).Result()
 
-	err := rdb.Set(ctx, "key", "value", 0).Err()
 	if err != nil {
-		logg.Warning(err)
-	}
+		logg.Info("Can not connect to redis")
 
-	val, err := rdb.Get(ctx, "key").Result()
-	if err != nil {
-		logg.Warning(err)
 	}
-	logg.Info("key", val)
-
-	val2, err := rdb.Get(ctx, "key2").Result()
-	if err == redis.Nil {
-		fmt.Println("key2 does not exist")
-	} else if err != nil {
-		logg.Warning(err)
-	} else {
-		logg.Info("key2", val2)
-	}
-	// Output: key value
-	// key2 does not exist
+	logg.Info("Connect to redis succesfully")
+	logg.Info(pong)
+	return rdb
 }

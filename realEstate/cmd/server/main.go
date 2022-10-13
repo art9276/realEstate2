@@ -6,6 +6,7 @@ import (
 	_ "github.com/swaggo/swag/example/celler/httputil"
 	_ "github.com/swaggo/swag/example/celler/model"
 	"realEstate/internal/db"
+	"realEstate/internal/db/redis"
 	"realEstate/internal/routes"
 	_ "realEstate/internal/routes"
 	logg "realEstate/pkg/log"
@@ -18,12 +19,11 @@ import (
 // @contact.email sntshkmr60@gmail.com
 // @license.name  Apache 2.0
 // @host          localhost:8080
-
 func main() {
 	logg.GetLogger()
 	db.InitDB()
+	redis.InitRedis()
 	routes.StartGin()
-	//redis.InitRedis()
 	logg.Info("Server is running on port:8080")
 
 }

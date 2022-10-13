@@ -39,7 +39,6 @@ func InitializeRoutes() {
 	router.GET("/auth/login", middleware.Login)
 	router.GET("/auth/logout", middleware.Logout)
 	router.GET("/getusers", middleware.GetUser)
-	router.GET("/user", middleware.UserCookie)
 	router.PUT("/users", middleware.UpdateUser)
 	router.DELETE("/users", middleware.DeleteUser)
 	router.GET(" ", middleware.NotFound)
@@ -52,4 +51,6 @@ func InitializeRoutes() {
 	router.POST("/upload", middleware.UploadFiles)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	logg.Info("Routes initialized")
+	// content service
+	router.GET("/content", middleware.GetContent)
 }
