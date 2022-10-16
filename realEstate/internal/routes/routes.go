@@ -49,6 +49,7 @@ func InitializeRoutes() {
 	router.PUT("/advertisment", middleware.UpdateAdvertisment)
 	router.DELETE("/advertisment", middleware.DeleteAdvertisment)
 	router.POST("/upload", middleware.UploadFiles)
+	//TODO настроить корректную работу свагера
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	logg.Info("Routes initialized")
 	// content service

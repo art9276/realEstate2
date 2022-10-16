@@ -25,7 +25,7 @@ func InitGorm() *gorm.DB {
 	}
 
 	logg.Info("Database is connected with GORM")
-	//TODO сделать дефер закрытие соединения
+
 	return db
 
 }

@@ -25,6 +25,7 @@ func GetLogger() {
 	wrt := io.MultiWriter(os.Stdout, file)
 	logrusLog.SetOutput(wrt)
 	logrusLog.Info("Logger get started")
+	//TODO сделать так чтобы записывалось в любой части кода а не только здесь
 }
 
 func WithFields(fields logrus.Fields) {
@@ -55,4 +56,8 @@ func Fatal(args ...interface{}) {
 
 func Warning(args ...interface{}) {
 	logrus.Warning()
+}
+
+func SetOutput(output io.Writer) {
+	logrus.SetOutput(output)
 }

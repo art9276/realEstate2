@@ -9,6 +9,7 @@ import (
 var ctx = context.Background()
 
 // initialize redis db
+//TODO не забыть потом прикрутить через viper
 func InitRedis() *redis.Client {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "127.0.0.1:6379",

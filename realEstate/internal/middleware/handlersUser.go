@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
 	"net/http"
 	"os"
@@ -20,7 +22,8 @@ import (
 var ctx = context.Background()
 
 func Logout(c *gin.Context) {
-	//TODO add cookie and clear whem
+	token := c.Query("Token")
+	redis.InitRedis().Del(ctx, token)
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
@@ -41,15 +44,62 @@ func Login(c *gin.Context) {
 	//TODO add cookie
 	Login := c.Query("Login")
 	Enc_password := c.Query("Enc_password")
+	errval := validation.Validate(Login,
+		validation.Required,
+		validation.Length(6, 20))
+	if errval != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Login is not valid",
+		})
+		return
+	}
+	errval2 := validation.Validate(Enc_password,
+		validation.Required,
+		validation.Length(1, 10))
+	if errval2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Password is not valid",
+		})
+		return
+	}
 	var user models.User
 	row := db.InitDB().QueryRow(`SELECT "Id_user","Login", "Enc_password"
  	 FROM public."Users" where "Login"=$1`, Login)
 	err2 := row.Scan(&user.Id_user, &user.Login, &user.Enc_password)
+	//TODO возможно можно как то более аккуратно сделать валидацию по 1 параметру
+	errval3 := validation.Validate(user.Id_user,
+		validation.Required,
+		validation.Length(1, 10))
+	if errval3 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Id is not valid",
+		})
+		return
+	}
+	errval4 := validation.Validate(user.Login,
+		validation.Required,
+		validation.Length(5, 20))
+	if errval4 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Login is not valid",
+		})
+		return
+	}
+	errval5 := validation.Validate(user.Enc_password,
+		validation.Required,
+		validation.Length(30, 100))
+	if errval5 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Enc_password is not valid",
+		})
+		return
+	}
 	if err2 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "User not found",
 		})
 	}
+
 	if pass.CheckPasswordHash(Enc_password, user.Enc_password) != true {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid password",
@@ -110,6 +160,88 @@ func GetAllUser(c *gin.Context) {
 				"message": "Users not scanned",
 			})
 		}
+		errval := validation.Validate(user.Id_user,
+			validation.Required,
+			validation.Length(1, 10))
+		if errval != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Id is not valid",
+			})
+			return
+		}
+		errval2 := validation.Validate(user.Name,
+			validation.Required,
+			validation.Length(5, 20))
+		if errval2 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Name is not valid",
+			})
+			return
+		}
+		errval3 := validation.Validate(user.Surename,
+			validation.Required,
+			validation.Length(5, 20))
+		if errval3 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Surename is not valid",
+			})
+			return
+		}
+		errval4 := validation.Validate(user.Login,
+			validation.Required,
+			validation.Length(5, 20))
+		if errval4 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Login is not valid",
+			})
+			return
+		}
+		errval5 := validation.Validate(user.Enc_password,
+			validation.Required,
+			validation.Length(30, 100))
+		if errval5 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Enc_password is not valid",
+			})
+			return
+		}
+		errval6 := validation.Validate(user.Telephone,
+			validation.Required,
+			validation.Length(5, 20))
+		if errval6 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Telephone is not valid",
+			})
+			return
+		}
+		errval7 := validation.Validate(user.Email,
+			validation.Required,
+			validation.Length(10, 30),
+			is.Email)
+		if errval7 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Email is not valid",
+			})
+			return
+		}
+		errval8 := validation.Validate(user.Date_creation,
+			validation.Required,
+			validation.Length(10, 30))
+		if errval8 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Date_creation is not valid",
+			})
+			return
+		}
+		errval9 := validation.Validate(user.Role,
+			validation.Required,
+			validation.Length(4, 16))
+		if errval9 != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Role is not valid",
+			})
+			return
+		}
 		users = append(users, user)
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -136,24 +268,35 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "JSON non scanned",
 		})
+		return
 	}
+	err2 := models.ValidateUserInsert(u)
+	if err2 != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Validate error",
+		})
+		return
+	}
+
 	sqlStatement := `INSERT INTO public."Users"(
 			"Name", "Surename", "Login", 
 			"Enc_password", "Telephone", "Email","Date_creation","Role")
 			VALUES ($1, $2, $3, $4, $5, $6,$7,$8) `
-	res, err := db.InitDB().Query(sqlStatement, u.Name,
+	res, errquery := db.InitDB().Query(sqlStatement, u.Name,
 		u.Surename, u.Login,
 		pass.HashPassword(u.Enc_password), u.Telephone, u.Email, u.Date_creation, u.Role)
 
-	if err != nil {
+	if errquery != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Failed to saved user",
 		})
+		return
 	} else {
 		fmt.Println(res)
 		c.JSON(http.StatusCreated, gin.H{
 			"User created": u,
 		})
+		return
 	}
 }
 
@@ -181,6 +324,88 @@ func GetUser(c *gin.Context) {
 			"message": "Scan not complited",
 		})
 	}
+	errval := validation.Validate(user.Id_user,
+		validation.Required,
+		validation.Length(1, 10))
+	if errval != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Id is not valid",
+		})
+		return
+	}
+	errval2 := validation.Validate(user.Name,
+		validation.Required,
+		validation.Length(5, 20))
+	if errval2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Name is not valid",
+		})
+		return
+	}
+	errval3 := validation.Validate(user.Surename,
+		validation.Required,
+		validation.Length(5, 20))
+	if errval3 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Surename is not valid",
+		})
+		return
+	}
+	errval4 := validation.Validate(user.Login,
+		validation.Required,
+		validation.Length(5, 20))
+	if errval4 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Login is not valid",
+		})
+		return
+	}
+	errval5 := validation.Validate(user.Enc_password,
+		validation.Required,
+		validation.Length(30, 100))
+	if errval5 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Enc_password is not valid",
+		})
+		return
+	}
+	errval6 := validation.Validate(user.Telephone,
+		validation.Required,
+		validation.Length(5, 20))
+	if errval6 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Telephone is not valid",
+		})
+		return
+	}
+	errval7 := validation.Validate(user.Email,
+		validation.Required,
+		validation.Length(10, 30),
+		is.Email)
+	if errval7 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Email is not valid",
+		})
+		return
+	}
+	errval8 := validation.Validate(user.Date_creation,
+		validation.Required,
+		validation.Length(10, 30))
+	if errval8 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Date_creation is not valid",
+		})
+		return
+	}
+	errval9 := validation.Validate(user.Role,
+		validation.Required,
+		validation.Length(4, 16))
+	if errval9 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Role is not valid",
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"User for email": user,
 	})
@@ -206,6 +431,13 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "JSON non scanned",
 		})
+	}
+	err2 := models.ValidateUserUpdate(u)
+	if err2 != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Validate error",
+		})
+		return
 	}
 	sqlStatement := `UPDATE public."Users" SET
 			"Name"=$1, "Surename"=$2, "Login"=$3, 
@@ -241,16 +473,27 @@ func UpdateUser(c *gin.Context) {
 // @Router /users [delete]
 func DeleteUser(c *gin.Context) {
 	Email := c.Query("Email")
+	errval := validation.Validate(Email,
+		validation.Required,
+		validation.Length(10, 30),
+		is.Email)
+	if errval != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Validation error",
+		})
+	}
 	sqlStatement := `Delete from public."Users" where "Email"=$1`
 	res, err := db.InitDB().Query(sqlStatement, Email)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "User not found",
 		})
+		return
 	} else {
 		fmt.Println(res)
 
 		c.JSON(http.StatusOK, "User deleted")
+		return
 	}
 }
 
