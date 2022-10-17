@@ -51,6 +51,7 @@ func InitializeRoutes() {
 	router.POST("/upload", middleware.UploadFiles)
 	//TODO настроить корректную работу свагера
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/auth/validate",middleware.IsValidUserJWT)
 	logg.Info("Routes initialized")
 	// content service
 	router.GET("/content", middleware.GetContent)

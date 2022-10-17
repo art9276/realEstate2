@@ -48,7 +48,7 @@ func Login(c *gin.Context) {
 	Enc_password := c.Query("Enc_password")
 	errval := validation.Validate(Login,
 		validation.Required,
-		validation.Length(6, 20))
+		validation.Length(3, 20))
 	if errval != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Login is not valid",
@@ -71,8 +71,8 @@ func Login(c *gin.Context) {
 	err2 := row.Scan(&user.Id_user, &user.Login, &user.Enc_password)
 	//TODO возможно можно как то более аккуратно сделать валидацию по 1 параметру
 	errval3 := validation.Validate(user.Id_user,
-		validation.Required,
-		validation.Length(1, 10))
+		validation.Required)
+		//validation.Length(1, 10))
 	if errval3 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Id is not valid",
@@ -80,8 +80,8 @@ func Login(c *gin.Context) {
 		return
 	}
 	errval4 := validation.Validate(user.Login,
-		validation.Required,
-		validation.Length(5, 20))
+		validation.Required)
+		//validation.Length(5, 20))
 	if errval4 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Login is not valid",
@@ -89,8 +89,8 @@ func Login(c *gin.Context) {
 		return
 	}
 	errval5 := validation.Validate(user.Enc_password,
-		validation.Required,
-		validation.Length(30, 100))
+		validation.Required)
+		//validation.Length(30, 100))
 	if errval5 != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Enc_password is not valid",
@@ -608,4 +608,42 @@ func UploadFiles(c *gin.Context) {
 	// File saved successfully. Return proper result
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Upload sucesfully"})
+}
+
+func IsValidUserJWT (c *gin.Context) {
+	token2 := c.Query("Token")
+	if token2 =="" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Token is empty",
+		})
+	}
+	claims:=jwt.MapClaims{}
+	token,err:=jwt.ParseWithClaims(
+		token2,
+		claims,
+		func(token2 *jwt.Token) (interface{}, error) {
+			if _, ok := token2.Method.(*jwt.SigningMethodHMAC); !ok {
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid signing method"})
+			}
+			return []byte(SecretKey), nil
+		})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Token is not valid",
+		})
+		//TODO сделать удаление токена в редис
+		return
+	}
+	err2:=token.Claims.Valid()
+	if  err2 != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Expiration time not valid",
+		})
+		//TODO сделать удаление токена в редис
+	return
+	}
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+		"message": "Succesfully loged in",
+	})
 }
