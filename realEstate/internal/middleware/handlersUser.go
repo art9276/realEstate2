@@ -22,6 +22,7 @@ import (
 var ctx = context.Background()
 
 func Logout(c *gin.Context) {
+	//очистка токена и редирект
 	token := c.Query("Token")
 	redis.InitRedis().Del(ctx, token)
 	c.Redirect(http.StatusSeeOther, "/")
@@ -42,6 +43,7 @@ const SecretKey = "adsad3423sdf099bcv_@sfds&8"
 
 func Login(c *gin.Context) {
 	//TODO add cookie
+	//считывание логина ти пароля и их валидация
 	Login := c.Query("Login")
 	Enc_password := c.Query("Enc_password")
 	errval := validation.Validate(Login,
@@ -63,6 +65,7 @@ func Login(c *gin.Context) {
 		return
 	}
 	var user models.User
+	//считывание запроса ивалидация, затем помещение в структуру
 	row := db.InitDB().QueryRow(`SELECT "Id_user","Login", "Enc_password"
  	 FROM public."Users" where "Login"=$1`, Login)
 	err2 := row.Scan(&user.Id_user, &user.Login, &user.Enc_password)
@@ -99,18 +102,18 @@ func Login(c *gin.Context) {
 			"message": "User not found",
 		})
 	}
-
+	// хеширование пароля и сравнение с паролем в бд
 	if pass.CheckPasswordHash(Enc_password, user.Enc_password) != true {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid password",
 		})
 	}
-
+	//хэширование пользовательских данных(ИД) и времени его жизни
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Issuer:    strconv.Itoa(int(user.Id_user)),
 		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), // 1 day
 	})
-
+	// формирование токена
 	token, err := claims.SignedString([]byte(SecretKey))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -120,6 +123,7 @@ func Login(c *gin.Context) {
 	//	cookie, _ := c.Cookie("jwt")
 	//		c.SetCookie("jwt",token,3600,"/","localhost",false,true)
 	//	c.Cookie(cookie)
+	// запись токена и ИД в редис
 	d := redis.InitRedis().Set(ctx, token, user.Id_user, 0)
 	println(d)
 	c.JSON(http.StatusOK, gin.H{
@@ -140,7 +144,7 @@ func Login(c *gin.Context) {
 // @Failure 404 {object} web.APIError "Can not find ID"
 // @Router /users [get]
 func GetAllUser(c *gin.Context) {
-	// если добавлять поле date_creation,date_update
+	// если добавлять поле date_creation,date_update не работает с time.Time
 	rows, err := db.InitDB().Query(`SELECT "Id_user","Name", "Surename", 
        "Login", "Enc_password", "Telephone", "Email" ,"Date_creation","Role" FROM public."Users"`)
 	if err != nil {
@@ -152,6 +156,7 @@ func GetAllUser(c *gin.Context) {
 	var users []models.User
 	for rows.Next() {
 		var user models.User
+		//сканирование в структуру полозователей
 		err2 := rows.Scan(&user.Id_user, &user.Name, &user.Surename,
 			&user.Login, &user.Enc_password, &user.Telephone, &user.Email, &user.Date_creation, &user.Role)
 		// Exit if we get an error
@@ -160,6 +165,7 @@ func GetAllUser(c *gin.Context) {
 				"message": "Users not scanned",
 			})
 		}
+		//валидация по 1 полю внутри цикла
 		errval := validation.Validate(user.Id_user,
 			validation.Required,
 			validation.Length(1, 10))
@@ -244,6 +250,7 @@ func GetAllUser(c *gin.Context) {
 		}
 		users = append(users, user)
 	}
+	//вывод пользователя
 	c.JSON(http.StatusOK, gin.H{
 		"message": users,
 	})
@@ -264,12 +271,14 @@ func GetAllUser(c *gin.Context) {
 // @Router /auth/register [post]
 func CreateUser(c *gin.Context) {
 	u := new(models.User)
+	// считывание данных полученных от запроса
 	if err := c.BindJSON(u); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "JSON non scanned",
 		})
 		return
 	}
+	//их валидация
 	err2 := models.ValidateUserInsert(u)
 	if err2 != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -277,7 +286,7 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
-
+	//загрузка в базу
 	sqlStatement := `INSERT INTO public."Users"(
 			"Name", "Surename", "Login", 
 			"Enc_password", "Telephone", "Email","Date_creation","Role")
@@ -314,6 +323,17 @@ func CreateUser(c *gin.Context) {
 // @Router /users/:id [get]
 func GetUser(c *gin.Context) {
 	Email := c.Query("Email")
+	//проверка полученного емейла
+	errmail := validation.Validate(Email,
+		validation.Required,
+		validation.Length(10, 25))
+	if errmail != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Email is not valid",
+		})
+		return
+	}
+	//выполнение запроса и загрузка данных в структуру
 	var user models.User
 	row := db.InitDB().QueryRow(`SELECT "Id_user","Name", "Surename","Login", "Enc_password",
  	"Telephone", "Email", "Date_creation", "Role" FROM public."Users" where "Email"=$1`, Email)
@@ -324,6 +344,7 @@ func GetUser(c *gin.Context) {
 			"message": "Scan not complited",
 		})
 	}
+	//валидация отсканированных данных
 	errval := validation.Validate(user.Id_user,
 		validation.Required,
 		validation.Length(1, 10))
@@ -406,6 +427,7 @@ func GetUser(c *gin.Context) {
 		})
 		return
 	}
+	//Вывод пользователя
 	c.JSON(http.StatusOK, gin.H{
 		"User for email": user,
 	})
@@ -425,13 +447,14 @@ func GetUser(c *gin.Context) {
 // @Failure 404 {object} web.APIError "Can not find ID"
 // @Router /users/:id [put]
 func UpdateUser(c *gin.Context) {
-	//id := c.Param("id")
+	//Считывание данных с запроса
 	u := new(models.User)
 	if err := c.BindJSON(u); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "JSON non scanned",
 		})
 	}
+	//Валидация полученных данных
 	err2 := models.ValidateUserUpdate(u)
 	if err2 != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -439,6 +462,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
+	//Тело запроса и его выполнение
 	sqlStatement := `UPDATE public."Users" SET
 			"Name"=$1, "Surename"=$2, "Login"=$3, 
 			"Enc_password"=$4, "Telephone"=$5, "Email"=$6,"Date_creation"=$7,"Role"=$8
@@ -452,7 +476,7 @@ func UpdateUser(c *gin.Context) {
 		})
 	} else {
 		fmt.Println(res)
-
+		//Вывод полученного пользователя
 		c.JSON(http.StatusOK, gin.H{
 			"User updated": u,
 		})
@@ -473,6 +497,7 @@ func UpdateUser(c *gin.Context) {
 // @Router /users [delete]
 func DeleteUser(c *gin.Context) {
 	Email := c.Query("Email")
+	//Считывание и валидация полученного емейла
 	errval := validation.Validate(Email,
 		validation.Required,
 		validation.Length(10, 30),
@@ -482,6 +507,7 @@ func DeleteUser(c *gin.Context) {
 			"message": "Validation error",
 		})
 	}
+	//Выполнение запроса
 	sqlStatement := `Delete from public."Users" where "Email"=$1`
 	res, err := db.InitDB().Query(sqlStatement, Email)
 	if err != nil {
@@ -558,8 +584,10 @@ func UploadFiles(c *gin.Context) {
 
 	// Retrieve file information
 	extension := filepath.Ext(file.Filename)
-	// Generate random file name for the new uploaded file so it doesn't override the old file with same name
+	// Generate random file name for the new uploaded file so it doesn't
+	//override the old file with same name
 	newFileName := uuid.New().String() + extension
+	//Создание папки год месяц день и назв + расширение
 	year := time.Now().Year()
 	month := time.Now().Month()
 	day := time.Now().Day()
@@ -569,7 +597,7 @@ func UploadFiles(c *gin.Context) {
 	newFilePath := "./download/" + y + "/" + m + "/" + d + "/"
 	os.MkdirAll(newFilePath, 0777)
 
-	// The file is received, so let's save it
+	// Сохраниение файла
 
 	if err := c.SaveUploadedFile(file, newFilePath+newFileName); err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

@@ -47,7 +47,7 @@ func ValidateUserUpdate(u *User) error {
 		validation.Field(&u.Login, validation.Length(5, 20)),
 		validation.Field(&u.Enc_password, validation.Length(3, 50)),
 		validation.Field(&u.Telephone, validation.Length(5, 30)),
-		validation.Field(&u.Email, is.Email),
+		validation.Field(&u.Email,validation.Required, is.Email),
 		validation.Field(&u.Date_creation, validation.Length(5, 30)),
 		validation.Field(&u.Role, validation.Length(4, 12)))
 	return err

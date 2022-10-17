@@ -19,6 +19,7 @@ func GetAdvertisment(c *gin.Context) {
 			"message": "Could not convert string to int",
 		})
 	}
+	//тело запроса и перенос в структуру
 	var advertisment models.Advertisment
 	row := db.InitDB().QueryRow(`SELECT "IdAdvertisment", 
        "TypeAdvertisment", "Price", "TotalArea",  
@@ -34,6 +35,7 @@ func GetAdvertisment(c *gin.Context) {
 			"message": "Scan not complited",
 		})
 	}
+	//проверка полей на валидацию
 	errval9 := validation.Validate(advertisment.IdAdvertisment,
 		validation.Required,
 		validation.Length(1, 6))
@@ -114,6 +116,7 @@ func GetAdvertisment(c *gin.Context) {
 		})
 		return
 	}
+	//вывод если все нормально
 	c.JSON(http.StatusOK, gin.H{
 		"Advertisment for ID": advertisment,
 	})
@@ -121,12 +124,13 @@ func GetAdvertisment(c *gin.Context) {
 }
 
 func GetAllAdvertisment(c *gin.Context) {
+	//общий запрос который будет расширяться
 	query := `SELECT "IdAdvertisment", 
        "TypeAdvertisment", "Price", "TotalArea",  
        "YearOfContribution", "Address", "Description", 
        "NumberOfRooms","IsCommercial"
 	FROM public."Advertisment" where 1=1`
-	//start filtering function
+	//проверка на ваилидацию полученных значений если они есть
 	TypeAdvertisment := c.Query("TypeAdvertisment")
 	if TypeAdvertisment != "" {
 		errval := validation.Validate(TypeAdvertisment,
@@ -386,6 +390,7 @@ func GetAllAdvertisment(c *gin.Context) {
 		})
 		return
 	}
+	//дополнение запроса по выборке
 	//TODO почему то даже при выполнении запроса на asc и desc сортирует по одинаковому
 	if SortOrder == "" {
 		query += ` order by $1 ASC Limit $2 OFFSET $3`
@@ -403,6 +408,7 @@ func GetAllAdvertisment(c *gin.Context) {
 		})
 		return
 	}
+	//считывание полученных данных в структуру
 	defer rows.Close()
 	var advertisments []models.Advertisment
 	for rows.Next() {
@@ -428,12 +434,14 @@ func GetAllAdvertisment(c *gin.Context) {
 
 func CreateAdvertisment(c *gin.Context) {
 	a := new(models.Advertisment)
+	//считывание данных
 	if err := c.BindJSON(a); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "JSON non scanned",
 		})
 		return
 	}
+	//валидация полей
 	err2 := models.ValidateAdvertismentInsert(a)
 	if err2 != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -441,6 +449,7 @@ func CreateAdvertisment(c *gin.Context) {
 		})
 		return
 	}
+	//тело запроса и его исполнение
 	sqlStatement := `INSERT INTO public."Advertisment"(
 	"TypeAdvertisment", "Price", "TotalArea", 
      "YearOfContribution", "Address", 
